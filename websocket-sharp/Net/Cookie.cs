@@ -69,6 +69,11 @@ namespace WebSocketSharp.Net
   ///       <see href="https://tools.ietf.org/html/rfc2965">RFC 2965</see>
   ///       </term>
   ///     </item>
+  ///     <item>
+  ///       <term>
+  ///       <see href="https://tools.ietf.org/html/rfc6265">RFC 6265</see>
+  ///       </term>
+  ///     </item>
   ///   </list>
   ///   <para>
   ///   This class cannot be inherited.
@@ -90,8 +95,8 @@ namespace WebSocketSharp.Net
     private string                 _path;
     private string                 _port;
     private int[]                  _ports;
-    private static readonly char[] _reservedCharsForName;
     private static readonly char[] _reservedCharsForValue;
+    private string                 _sameSite;
     private bool                   _secure;
     private DateTime               _timeStamp;
     private string                 _value;
@@ -104,8 +109,19 @@ namespace WebSocketSharp.Net
     static Cookie ()
     {
       _emptyPorts = new int[0];
-      _reservedCharsForName = new[] { ' ', '=', ';', ',', '\n', '\r', '\t' };
       _reservedCharsForValue = new[] { ';', ',' };
+    }
+
+    #endregion
+
+    #region Internal Constructors
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Cookie"/> class.
+    /// </summary>
+    internal Cookie ()
+    {
+      init (String.Empty, String.Empty, String.Empty, String.Empty);
     }
 
     #endregion
@@ -113,33 +129,24 @@ namespace WebSocketSharp.Net
     #region Public Constructors
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="Cookie"/> class.
-    /// </summary>
-    public Cookie ()
-    {
-      init (String.Empty, "\"\"", String.Empty, String.Empty);
-    }
-
-    /// <summary>
     /// Initializes a new instance of the <see cref="Cookie"/> class with
     /// the specified name and value.
     /// </summary>
     /// <param name="name">
-    /// A <see cref="string"/> that specifies the Name of the cookie.
+    ///   <para>
+    ///   A <see cref="string"/> that specifies the name of the cookie.
+    ///   </para>
+    ///   <para>
+    ///   The name must be a token defined in
+    ///   <see href="http://tools.ietf.org/html/rfc2616#section-2.2">
+    ///   RFC 2616</see>.
+    ///   </para>
     /// </param>
     /// <param name="value">
-    /// A <see cref="string"/> that specifies the Value of the cookie.
+    /// A <see cref="string"/> that specifies the value of the cookie.
     /// </param>
     /// <exception cref="ArgumentNullException">
-    ///   <para>
-    ///   <paramref name="name"/> is <see langword="null"/>.
-    ///   </para>
-    ///   <para>
-    ///   - or -
-    ///   </para>
-    ///   <para>
-    ///   <paramref name="value"/> is <see langword="null"/>.
-    ///   </para>
+    /// <paramref name="name"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
     ///   <para>
@@ -175,25 +182,24 @@ namespace WebSocketSharp.Net
     /// the specified name, value, and path.
     /// </summary>
     /// <param name="name">
-    /// A <see cref="string"/> that specifies the Name of the cookie.
+    ///   <para>
+    ///   A <see cref="string"/> that specifies the name of the cookie.
+    ///   </para>
+    ///   <para>
+    ///   The name must be a token defined in
+    ///   <see href="http://tools.ietf.org/html/rfc2616#section-2.2">
+    ///   RFC 2616</see>.
+    ///   </para>
     /// </param>
     /// <param name="value">
-    /// A <see cref="string"/> that specifies the Value of the cookie.
+    /// A <see cref="string"/> that specifies the value of the cookie.
     /// </param>
     /// <param name="path">
     /// A <see cref="string"/> that specifies the value of the Path
     /// attribute of the cookie.
     /// </param>
     /// <exception cref="ArgumentNullException">
-    ///   <para>
-    ///   <paramref name="name"/> is <see langword="null"/>.
-    ///   </para>
-    ///   <para>
-    ///   - or -
-    ///   </para>
-    ///   <para>
-    ///   <paramref name="value"/> is <see langword="null"/>.
-    ///   </para>
+    /// <paramref name="name"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
     ///   <para>
@@ -229,10 +235,17 @@ namespace WebSocketSharp.Net
     /// the specified name, value, path, and domain.
     /// </summary>
     /// <param name="name">
-    /// A <see cref="string"/> that specifies the Name of the cookie.
+    ///   <para>
+    ///   A <see cref="string"/> that specifies the name of the cookie.
+    ///   </para>
+    ///   <para>
+    ///   The name must be a token defined in
+    ///   <see href="http://tools.ietf.org/html/rfc2616#section-2.2">
+    ///   RFC 2616</see>.
+    ///   </para>
     /// </param>
     /// <param name="value">
-    /// A <see cref="string"/> that specifies the Value of the cookie.
+    /// A <see cref="string"/> that specifies the value of the cookie.
     /// </param>
     /// <param name="path">
     /// A <see cref="string"/> that specifies the value of the Path
@@ -243,15 +256,7 @@ namespace WebSocketSharp.Net
     /// attribute of the cookie.
     /// </param>
     /// <exception cref="ArgumentNullException">
-    ///   <para>
-    ///   <paramref name="name"/> is <see langword="null"/>.
-    ///   </para>
-    ///   <para>
-    ///   - or -
-    ///   </para>
-    ///   <para>
-    ///   <paramref name="value"/> is <see langword="null"/>.
-    ///   </para>
+    /// <paramref name="name"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
     ///   <para>
@@ -282,9 +287,6 @@ namespace WebSocketSharp.Net
       if (name == null)
         throw new ArgumentNullException ("name");
 
-      if (value == null)
-        throw new ArgumentNullException ("value");
-
       if (name.Length == 0)
         throw new ArgumentException ("An empty string.", "name");
 
@@ -293,10 +295,13 @@ namespace WebSocketSharp.Net
         throw new ArgumentException (msg, "name");
       }
 
-      if (name.Contains (_reservedCharsForName)) {
+      if (!name.IsToken ()) {
         var msg = "It contains an invalid character.";
         throw new ArgumentException (msg, "name");
       }
+
+      if (value == null)
+        value = String.Empty;
 
       if (value.Contains (_reservedCharsForValue)) {
         if (!value.IsEnclosedIn ('"')) {
@@ -305,12 +310,7 @@ namespace WebSocketSharp.Net
         }
       }
 
-      init (
-        name,
-        value.Length > 0 ? value : "\"\"",
-        path ?? String.Empty,
-        domain ?? String.Empty
-      );
+      init (name, value, path ?? String.Empty, domain ?? String.Empty);
     }
 
     #endregion
@@ -337,6 +337,12 @@ namespace WebSocketSharp.Net
                ? (int) span.TotalSeconds
                : 0;
       }
+
+      set {
+        _expires = value > 0
+                   ? DateTime.Now.AddSeconds ((double) value)
+                   : DateTime.Now;
+      }
     }
 
     internal int[] Ports {
@@ -345,12 +351,22 @@ namespace WebSocketSharp.Net
       }
     }
 
+    internal string SameSite {
+      get {
+        return _sameSite;
+      }
+
+      set {
+        _sameSite = value;
+      }
+    }
+
     #endregion
 
     #region Public Properties
 
     /// <summary>
-    /// Gets or sets the value of the Comment attribute of the cookie.
+    /// Gets the value of the Comment attribute of the cookie.
     /// </summary>
     /// <value>
     ///   <para>
@@ -358,24 +374,24 @@ namespace WebSocketSharp.Net
     ///   intended use of the cookie.
     ///   </para>
     ///   <para>
-    ///   An empty string if this attribute is not needed.
+    ///   <see langword="null"/> if not present.
     ///   </para>
     ///   <para>
-    ///   The default value is an empty string.
+    ///   The default value is <see langword="null"/>.
     ///   </para>
     /// </value>
     public string Comment {
       get {
-        return _comment ?? String.Empty;
+        return _comment;
       }
 
-      set {
+      internal set {
         _comment = value;
       }
     }
 
     /// <summary>
-    /// Gets or sets the value of the CommentURL attribute of the cookie.
+    /// Gets the value of the CommentURL attribute of the cookie.
     /// </summary>
     /// <value>
     ///   <para>
@@ -383,7 +399,7 @@ namespace WebSocketSharp.Net
     ///   the comment to document intended use of the cookie.
     ///   </para>
     ///   <para>
-    ///   <see langword="null"/> if this attribute is not needed.
+    ///   <see langword="null"/> if not present.
     ///   </para>
     ///   <para>
     ///   The default value is <see langword="null"/>.
@@ -394,13 +410,13 @@ namespace WebSocketSharp.Net
         return _commentUri;
       }
 
-      set {
+      internal set {
         _commentUri = value;
       }
     }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the client discards the cookie
+    /// Gets a value indicating whether the client discards the cookie
     /// unconditionally when the client terminates.
     /// </summary>
     /// <value>
@@ -417,7 +433,7 @@ namespace WebSocketSharp.Net
         return _discard;
       }
 
-      set {
+      internal set {
         _discard = value;
       }
     }
@@ -514,10 +530,17 @@ namespace WebSocketSharp.Net
     }
 
     /// <summary>
-    /// Gets or sets the Name of the cookie.
+    /// Gets or sets the name of the cookie.
     /// </summary>
     /// <value>
-    /// A <see cref="string"/> that represents the Name of the cookie.
+    ///   <para>
+    ///   A <see cref="string"/> that represents the name of the cookie.
+    ///   </para>
+    ///   <para>
+    ///   The name must be a token defined in
+    ///   <see href="http://tools.ietf.org/html/rfc2616#section-2.2">
+    ///   RFC 2616</see>.
+    ///   </para>
     /// </value>
     /// <exception cref="ArgumentNullException">
     /// The value specified for a set operation is <see langword="null"/>.
@@ -556,7 +579,7 @@ namespace WebSocketSharp.Net
           throw new ArgumentException (msg, "value");
         }
 
-        if (value.Contains (_reservedCharsForName)) {
+        if (!value.IsToken ()) {
           var msg = "It contains an invalid character.";
           throw new ArgumentException (msg, "value");
         }
@@ -583,7 +606,7 @@ namespace WebSocketSharp.Net
     }
 
     /// <summary>
-    /// Gets or sets the value of the Port attribute of the cookie.
+    /// Gets the value of the Port attribute of the cookie.
     /// </summary>
     /// <value>
     ///   <para>
@@ -591,47 +614,21 @@ namespace WebSocketSharp.Net
     ///   that the cookie applies to.
     ///   </para>
     ///   <para>
-    ///   An empty string if this attribute is not needed.
+    ///   <see langword="null"/> if not present.
     ///   </para>
     ///   <para>
-    ///   The default value is an empty string.
+    ///   The default value is <see langword="null"/>.
     ///   </para>
     /// </value>
-    /// <exception cref="ArgumentException">
-    ///   <para>
-    ///   The value specified for a set operation is not enclosed in
-    ///   double quotes.
-    ///   </para>
-    ///   <para>
-    ///   -or-
-    ///   </para>
-    ///   <para>
-    ///   The value specified for a set operation could not be parsed.
-    ///   </para>
-    /// </exception>
     public string Port {
       get {
-        return _port ?? String.Empty;
+        return _port;
       }
 
-      set { 
-        if (value.IsNullOrEmpty ()) {
-          _port = value;
-          _ports = null;
-
-          return;
-        }
-
-        if (!value.IsEnclosedIn ('"')) {
-          var msg = "It is not enclosed in double quotes.";
-          throw new ArgumentException (msg, "value");
-        }
-
+      internal set {
         int[] ports;
-        if (!tryCreatePorts (value, out ports)) {
-          var msg = "It could not be parsed.";
-          throw new ArgumentException (msg, "value");
-        }
+        if (!tryCreatePorts (value, out ports))
+          return;
 
         _port = value;
         _ports = ports;
@@ -679,14 +676,11 @@ namespace WebSocketSharp.Net
     }
 
     /// <summary>
-    /// Gets or sets the Value of the cookie.
+    /// Gets or sets the value of the cookie.
     /// </summary>
     /// <value>
-    /// A <see cref="string"/> that represents the Value of the cookie.
+    /// A <see cref="string"/> that represents the value of the cookie.
     /// </value>
-    /// <exception cref="ArgumentNullException">
-    /// The value specified for a set operation is <see langword="null"/>.
-    /// </exception>
     /// <exception cref="ArgumentException">
     /// The value specified for a set operation is a string not enclosed in
     /// double quotes that contains an invalid character.
@@ -698,7 +692,7 @@ namespace WebSocketSharp.Net
 
       set {
         if (value == null)
-          throw new ArgumentNullException ("value");
+          value = String.Empty;
 
         if (value.Contains (_reservedCharsForValue)) {
           if (!value.IsEnclosedIn ('"')) {
@@ -707,12 +701,12 @@ namespace WebSocketSharp.Net
           }
         }
 
-        _value = value.Length > 0 ? value : "\"\"";
+        _value = value;
       }
     }
 
     /// <summary>
-    /// Gets or sets the value of the Version attribute of the cookie.
+    /// Gets the value of the Version attribute of the cookie.
     /// </summary>
     /// <value>
     ///   <para>
@@ -720,25 +714,20 @@ namespace WebSocketSharp.Net
     ///   management that the cookie conforms to.
     ///   </para>
     ///   <para>
-    ///   0 or 1.
+    ///   0 or 1. 0 if not present.
     ///   </para>
     ///   <para>
     ///   The default value is 0.
     ///   </para>
     /// </value>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// The value specified for a set operation is not allowed.
-    /// </exception>
     public int Version {
       get {
         return _version;
       }
 
-      set {
-        if (value < 0 || value > 1) {
-          var msg = "It is not allowed.";
-          throw new ArgumentOutOfRangeException ("value", msg);
-        }
+      internal set {
+        if (value < 0 || value > 1)
+          return;
 
         _version = value;
       }
@@ -790,6 +779,9 @@ namespace WebSocketSharp.Net
       if (!_domain.IsNullOrEmpty ())
         buff.AppendFormat ("; Domain={0}", _domain);
 
+      if (!_sameSite.IsNullOrEmpty ())
+        buff.AppendFormat ("; SameSite={0}", _sameSite);
+
       if (_secure)
         buff.Append ("; Secure");
 
@@ -814,14 +806,14 @@ namespace WebSocketSharp.Net
       if (!_domain.IsNullOrEmpty ())
         buff.AppendFormat ("; Domain={0}", _domain);
 
-      if (!_port.IsNullOrEmpty ()) {
+      if (_port != null) {
         if (_port != "\"\"")
           buff.AppendFormat ("; Port={0}", _port);
         else
           buff.Append ("; Port");
       }
 
-      if (!_comment.IsNullOrEmpty ())
+      if (_comment != null)
         buff.AppendFormat ("; Comment={0}", HttpUtility.UrlEncode (_comment));
 
       if (_commentUri != null) {
@@ -902,7 +894,7 @@ namespace WebSocketSharp.Net
           buff.AppendFormat ("; $Domain={0}", _domain);
       }
 
-      if (!_port.IsNullOrEmpty ()) {
+      if (_port != null) {
         if (_port != "\"\"")
           buff.AppendFormat ("; $Port={0}", _port);
         else
@@ -926,6 +918,22 @@ namespace WebSocketSharp.Net
              : _version == 0
                ? toResponseStringVersion0 ()
                : toResponseStringVersion1 ();
+    }
+
+    internal static bool TryCreate (
+      string name, string value, out Cookie result
+    )
+    {
+      result = null;
+
+      try {
+        result = new Cookie (name, value);
+      }
+      catch {
+        return false;
+      }
+
+      return true;
     }
 
     #endregion

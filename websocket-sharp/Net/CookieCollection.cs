@@ -8,7 +8,7 @@
  * The MIT License
  *
  * Copyright (c) 2004,2009 Novell, Inc. (http://www.novell.com)
- * Copyright (c) 2012-2014 sta.blockhead
+ * Copyright (c) 2012-2019 sta.blockhead
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +51,7 @@ namespace WebSocketSharp.Net
   /// Provides a collection of instances of the <see cref="Cookie"/> class.
   /// </summary>
   [Serializable]
-  public class CookieCollection : ICollection, IEnumerable
+  public class CookieCollection : ICollection<Cookie>
   {
     #region Private Fields
 
@@ -193,10 +193,10 @@ namespace WebSocketSharp.Net
         if (name == null)
           throw new ArgumentNullException ("name");
 
-        var compType = StringComparison.InvariantCultureIgnoreCase;
+        var caseInsensitive = StringComparison.InvariantCultureIgnoreCase;
 
         foreach (var cookie in Sorted) {
-          if (cookie.Name.Equals (name, compType))
+          if (cookie.Name.Equals (name, caseInsensitive))
             return cookie;
         }
 
@@ -252,9 +252,9 @@ namespace WebSocketSharp.Net
       var ret = new CookieCollection ();
 
       Cookie cookie = null;
-      var compType = StringComparison.InvariantCultureIgnoreCase;
       var ver = 0;
 
+      var caseInsensitive = StringComparison.InvariantCultureIgnoreCase;
       var pairs = value.SplitHeaderValue (',', ';').ToList ();
 
       for (var i = 0; i < pairs.Count; i++) {
@@ -267,7 +267,7 @@ namespace WebSocketSharp.Net
           if (cookie == null)
             continue;
 
-          if (pair.Equals ("$port", compType)) {
+          if (pair.Equals ("$port", caseInsensitive)) {
             cookie.Port = "\"\"";
             continue;
           }
@@ -277,7 +277,7 @@ namespace WebSocketSharp.Net
 
         if (idx == 0) {
           if (cookie != null) {
-            ret.Add (cookie);
+            ret.add (cookie);
             cookie = null;
           }
 
@@ -289,12 +289,19 @@ namespace WebSocketSharp.Net
                   ? pair.Substring (idx + 1).TrimStart (' ')
                   : String.Empty;
 
-        if (name.Equals ("$version", compType)) {
-          ver = val.Length > 0 ? Int32.Parse (val.Unquote ()) : 0;
+        if (name.Equals ("$version", caseInsensitive)) {
+          if (val.Length == 0)
+            continue;
+
+          int num;
+          if (!Int32.TryParse (val.Unquote (), out num))
+            continue;
+
+          ver = num;
           continue;
         }
 
-        if (name.Equals ("$path", compType)) {
+        if (name.Equals ("$path", caseInsensitive)) {
           if (cookie == null)
             continue;
 
@@ -305,7 +312,7 @@ namespace WebSocketSharp.Net
           continue;
         }
 
-        if (name.Equals ("$domain", compType)) {
+        if (name.Equals ("$domain", caseInsensitive)) {
           if (cookie == null)
             continue;
 
@@ -316,7 +323,7 @@ namespace WebSocketSharp.Net
           continue;
         }
 
-        if (name.Equals ("$port", compType)) {
+        if (name.Equals ("$port", caseInsensitive)) {
           if (cookie == null)
             continue;
 
@@ -328,16 +335,17 @@ namespace WebSocketSharp.Net
         }
 
         if (cookie != null)
-          ret.Add (cookie);
+          ret.add (cookie);
 
-        cookie = new Cookie (name, val);
+        if (!Cookie.TryCreate (name, val, out cookie))
+          continue;
 
         if (ver != 0)
           cookie.Version = ver;
       }
 
       if (cookie != null)
-        ret.Add (cookie);
+        ret.add (cookie);
 
       return ret;
     }
@@ -347,8 +355,8 @@ namespace WebSocketSharp.Net
       var ret = new CookieCollection ();
 
       Cookie cookie = null;
-      var compType = StringComparison.InvariantCultureIgnoreCase;
 
+      var caseInsensitive = StringComparison.InvariantCultureIgnoreCase;
       var pairs = value.SplitHeaderValue (',', ';').ToList ();
 
       for (var i = 0; i < pairs.Count; i++) {
@@ -361,22 +369,22 @@ namespace WebSocketSharp.Net
           if (cookie == null)
             continue;
 
-          if (pair.Equals ("port", compType)) {
+          if (pair.Equals ("port", caseInsensitive)) {
             cookie.Port = "\"\"";
             continue;
           }
 
-          if (pair.Equals ("discard", compType)) {
+          if (pair.Equals ("discard", caseInsensitive)) {
             cookie.Discard = true;
             continue;
           }
 
-          if (pair.Equals ("secure", compType)) {
+          if (pair.Equals ("secure", caseInsensitive)) {
             cookie.Secure = true;
             continue;
           }
 
-          if (pair.Equals ("httponly", compType)) {
+          if (pair.Equals ("httponly", caseInsensitive)) {
             cookie.HttpOnly = true;
             continue;
           }
@@ -386,7 +394,7 @@ namespace WebSocketSharp.Net
 
         if (idx == 0) {
           if (cookie != null) {
-            ret.Add (cookie);
+            ret.add (cookie);
             cookie = null;
           }
 
@@ -398,18 +406,22 @@ namespace WebSocketSharp.Net
                   ? pair.Substring (idx + 1).TrimStart (' ')
                   : String.Empty;
 
-        if (name.Equals ("version", compType)) {
+        if (name.Equals ("version", caseInsensitive)) {
           if (cookie == null)
             continue;
 
           if (val.Length == 0)
             continue;
 
-          cookie.Version = Int32.Parse (val.Unquote ());
+          int num;
+          if (!Int32.TryParse (val.Unquote (), out num))
+            continue;
+
+          cookie.Version = num;
           continue;
         }
 
-        if (name.Equals ("expires", compType)) {
+        if (name.Equals ("expires", caseInsensitive)) {
           if (val.Length == 0)
             continue;
 
@@ -438,27 +450,28 @@ namespace WebSocketSharp.Net
               out expires
             )
           )
-            expires = DateTime.Now;
+            continue;
 
           cookie.Expires = expires.ToLocalTime ();
           continue;
         }
 
-        if (name.Equals ("max-age", compType)) {
+        if (name.Equals ("max-age", caseInsensitive)) {
           if (cookie == null)
             continue;
 
           if (val.Length == 0)
             continue;
 
-          var max = Int32.Parse (val.Unquote ());
-          var expires = DateTime.Now.AddSeconds ((double) max);
-          cookie.Expires = expires;
+          int num;
+          if (!Int32.TryParse (val.Unquote (), out num))
+            continue;
 
+          cookie.MaxAge = num;
           continue;
         }
 
-        if (name.Equals ("path", compType)) {
+        if (name.Equals ("path", caseInsensitive)) {
           if (cookie == null)
             continue;
 
@@ -469,7 +482,7 @@ namespace WebSocketSharp.Net
           continue;
         }
 
-        if (name.Equals ("domain", compType)) {
+        if (name.Equals ("domain", caseInsensitive)) {
           if (cookie == null)
             continue;
 
@@ -480,7 +493,7 @@ namespace WebSocketSharp.Net
           continue;
         }
 
-        if (name.Equals ("port", compType)) {
+        if (name.Equals ("port", caseInsensitive)) {
           if (cookie == null)
             continue;
 
@@ -491,7 +504,7 @@ namespace WebSocketSharp.Net
           continue;
         }
 
-        if (name.Equals ("comment", compType)) {
+        if (name.Equals ("comment", caseInsensitive)) {
           if (cookie == null)
             continue;
 
@@ -502,7 +515,7 @@ namespace WebSocketSharp.Net
           continue;
         }
 
-        if (name.Equals ("commenturl", compType)) {
+        if (name.Equals ("commenturl", caseInsensitive)) {
           if (cookie == null)
             continue;
 
@@ -513,14 +526,25 @@ namespace WebSocketSharp.Net
           continue;
         }
 
-        if (cookie != null)
-          ret.Add (cookie);
+        if (name.Equals ("samesite", caseInsensitive)) {
+          if (cookie == null)
+            continue;
 
-        cookie = new Cookie (name, val);
+          if (val.Length == 0)
+            continue;
+
+          cookie.SameSite = val.Unquote ();
+          continue;
+        }
+
+        if (cookie != null)
+          ret.add (cookie);
+
+        Cookie.TryCreate (name, val, out cookie);
       }
 
       if (cookie != null)
-        ret.Add (cookie);
+        ret.add (cookie);
 
       return ret;
     }
@@ -537,9 +561,6 @@ namespace WebSocketSharp.Net
 
     private static string urlDecode (string s, Encoding encoding)
     {
-      if (s == null)
-        return null;
-
       if (s.IndexOfAny (new[] { '%', '+' }) == -1)
         return s;
 
@@ -557,9 +578,14 @@ namespace WebSocketSharp.Net
 
     internal static CookieCollection Parse (string value, bool response)
     {
-      return response
-             ? parseResponse (value)
-             : parseRequest (value);
+      try {
+        return response
+               ? parseResponse (value)
+               : parseRequest (value);
+      }
+      catch (Exception ex) {
+        throw new CookieException ("It could not be parsed.", ex);
+      }
     }
 
     internal void SetOrRemove (Cookie cookie)
@@ -583,7 +609,7 @@ namespace WebSocketSharp.Net
 
     internal void SetOrRemove (CookieCollection cookies)
     {
-      foreach (Cookie cookie in cookies)
+      foreach (var cookie in cookies._list)
         SetOrRemove (cookie);
     }
 
@@ -603,11 +629,19 @@ namespace WebSocketSharp.Net
     /// <param name="cookie">
     /// A <see cref="Cookie"/> to add.
     /// </param>
+    /// <exception cref="InvalidOperationException">
+    /// The collection is read-only.
+    /// </exception>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="cookie"/> is <see langword="null"/>.
     /// </exception>
     public void Add (Cookie cookie)
     {
+      if (_readOnly) {
+        var msg = "The collection is read-only.";
+        throw new InvalidOperationException (msg);
+      }
+
       if (cookie == null)
         throw new ArgumentNullException ("cookie");
 
@@ -620,74 +654,61 @@ namespace WebSocketSharp.Net
     /// <param name="cookies">
     /// A <see cref="CookieCollection"/> that contains the cookies to add.
     /// </param>
+    /// <exception cref="InvalidOperationException">
+    /// The collection is read-only.
+    /// </exception>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="cookies"/> is <see langword="null"/>.
     /// </exception>
     public void Add (CookieCollection cookies)
     {
+      if (_readOnly) {
+        var msg = "The collection is read-only.";
+        throw new InvalidOperationException (msg);
+      }
+
       if (cookies == null)
         throw new ArgumentNullException ("cookies");
 
-      foreach (Cookie cookie in cookies)
+      foreach (var cookie in cookies._list)
         add (cookie);
     }
 
     /// <summary>
-    /// Copies the elements of the collection to the specified array,
-    /// starting at the specified index.
+    /// Removes all cookies from the collection.
     /// </summary>
-    /// <param name="array">
-    /// An <see cref="Array"/> that specifies the destination of
-    /// the elements copied from the collection.
-    /// </param>
-    /// <param name="index">
-    /// An <see cref="int"/> that specifies the zero-based index in
-    /// the array at which copying starts.
+    /// <exception cref="InvalidOperationException">
+    /// The collection is read-only.
+    /// </exception>
+    public void Clear ()
+    {
+      if (_readOnly) {
+        var msg = "The collection is read-only.";
+        throw new InvalidOperationException (msg);
+      }
+
+      _list.Clear ();
+    }
+
+    /// <summary>
+    /// Determines whether the collection contains the specified cookie.
+    /// </summary>
+    /// <returns>
+    /// <c>true</c> if the cookie is found in the collection; otherwise,
+    /// <c>false</c>.
+    /// </returns>
+    /// <param name="cookie">
+    /// A <see cref="Cookie"/> to find.
     /// </param>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="array"/> is <see langword="null"/>.
+    /// <paramref name="cookie"/> is <see langword="null"/>.
     /// </exception>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="index"/> is less than zero.
-    /// </exception>
-    /// <exception cref="ArgumentException">
-    ///   <para>
-    ///   <paramref name="array"/> is multidimensional.
-    ///   </para>
-    ///   <para>
-    ///   -or-
-    ///   </para>
-    ///   <para>
-    ///   The space from <paramref name="index"/> to the end of
-    ///   <paramref name="array"/> is not enough to copy to.
-    ///   </para>
-    /// </exception>
-    /// <exception cref="InvalidCastException">
-    /// The element type of <paramref name="array"/> cannot be assigned.
-    /// </exception>
-    public void CopyTo (Array array, int index)
+    public bool Contains (Cookie cookie)
     {
-      if (array == null)
-        throw new ArgumentNullException ("array");
+      if (cookie == null)
+        throw new ArgumentNullException ("cookie");
 
-      if (index < 0)
-        throw new ArgumentOutOfRangeException ("index", "Less than zero.");
-
-      if (array.Rank > 1)
-        throw new ArgumentException ("Multidimensional.", "array");
-
-      if (array.Length - index < _list.Count) {
-        var msg = "The available space of the array is not enough to copy to.";
-        throw new ArgumentException (msg);
-      }
-
-      var elmType = array.GetType ().GetElementType ();
-      if (!elmType.IsAssignableFrom (typeof (Cookie))) {
-        var msg = "The element type of the array cannot be assigned.";
-        throw new InvalidCastException (msg);
-      }
-
-      ((IList) _list).CopyTo (array, index);
+      return search (cookie) > -1;
     }
 
     /// <summary>
@@ -729,13 +750,68 @@ namespace WebSocketSharp.Net
     }
 
     /// <summary>
-    /// Gets the enumerator used to iterate through the collection.
+    /// Gets the enumerator that iterates through the collection.
     /// </summary>
     /// <returns>
-    /// An <see cref="IEnumerator"/> instance used to iterate through
-    /// the collection.
+    /// An <see cref="T:System.Collections.Generic.IEnumerator{Cookie}"/>
+    /// instance that can be used to iterate through the collection.
     /// </returns>
-    public IEnumerator GetEnumerator ()
+    public IEnumerator<Cookie> GetEnumerator ()
+    {
+      return _list.GetEnumerator ();
+    }
+
+    /// <summary>
+    /// Removes the specified cookie from the collection.
+    /// </summary>
+    /// <returns>
+    ///   <para>
+    ///   <c>true</c> if the cookie is successfully removed; otherwise,
+    ///   <c>false</c>.
+    ///   </para>
+    ///   <para>
+    ///   <c>false</c> if the cookie is not found in the collection.
+    ///   </para>
+    /// </returns>
+    /// <param name="cookie">
+    /// A <see cref="Cookie"/> to remove.
+    /// </param>
+    /// <exception cref="InvalidOperationException">
+    /// The collection is read-only.
+    /// </exception>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="cookie"/> is <see langword="null"/>.
+    /// </exception>
+    public bool Remove (Cookie cookie)
+    {
+      if (_readOnly) {
+        var msg = "The collection is read-only.";
+        throw new InvalidOperationException (msg);
+      }
+
+      if (cookie == null)
+        throw new ArgumentNullException ("cookie");
+
+      var idx = search (cookie);
+      if (idx == -1)
+        return false;
+
+      _list.RemoveAt (idx);
+      return true;
+    }
+
+    #endregion
+
+    #region Explicit Interface Implementations
+
+    /// <summary>
+    /// Gets the enumerator that iterates through the collection.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IEnumerator"/> instance that can be used to iterate
+    /// through the collection.
+    /// </returns>
+    IEnumerator IEnumerable.GetEnumerator ()
     {
       return _list.GetEnumerator ();
     }
